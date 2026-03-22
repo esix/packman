@@ -313,6 +313,11 @@ class Game {
       const freq = 1193181 / (600 + 150 * Math.sin(this.stateTimer * 0.05));
       sound.eatDot();  // approximate the sweep with short beeps
     }
+    // Ignore input for first 120 frames (~2s) so mobile taps don't skip the screen
+    if (this.stateTimer < 120) {
+      input.wasPressed('Space'); input.wasPressed('Enter'); input.wasPressed('Escape');
+      return;
+    }
     if (input.wasPressed('Space') || input.wasPressed('Enter') || input.wasPressed('Escape')) {
       if (this.score > this.hiScore) {
         this.hiScore = this.score;
@@ -327,6 +332,11 @@ class Game {
   // ASM: game over waits for any keypress (fn0800_0ADF calls fn0800_044C)
   _updateGameOver() {
     this.stateTimer++;
+    // Ignore input for first 120 frames (~2s) so mobile taps don't skip the screen
+    if (this.stateTimer < 120) {
+      input.wasPressed('Space'); input.wasPressed('Enter'); input.wasPressed('Escape');
+      return;
+    }
     if (input.wasPressed('Space') || input.wasPressed('Enter') || input.wasPressed('Escape')) {
       this._setState(S_MENU);
     }

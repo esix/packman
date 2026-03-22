@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>PACKMAN — JS Port</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    #game-canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      cursor: none;
+    }
+
+    /* ── Bottom UI bar ────────────────────────────────────────────────── */
+    #ui {
+      position: fixed; bottom: 8px; right: 12px;
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    }
+    #ui button {
+      background: #222; color: #aaa; border: 1px solid #555;
+      padding: 4px 10px; font-family: monospace; font-size: 12px;
+      cursor: pointer; touch-action: manipulation;
+    }
+    #ui button:hover:not(:disabled) { background: #333; color: #fff; }
+    #ui button:disabled { color: #555; border-color: #333; cursor: default; }
+    #ui select {
+      background: #222; color: #aaa; border: 1px solid #555;
+      padding: 4px; font-family: monospace; font-size: 12px;
+    }
+    #ui label { color: #888; font-family: monospace; font-size: 12px; }
+
+    /* ── Touch device overrides ──────────────────────────────────────── */
+    @media (pointer: coarse) {
+      #ui {
+        position: static;
+        justify-content: center;
+        padding: 6px 3px 0;
+        width: 100%;
+        gap: 5px;
+      }
+      #ui button {
+        padding: 8px 11px;
+        font-size: 12px;
+        border-radius: 6px;
+      }
+      #ui select {
+        padding: 6px 5px;
+        font-size: 12px;
+      }
+      #ui label { font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game-canvas" width="320" height="200"></canvas>
+
+  <div id="ui">
+    <label>Palette:</label>
+    <select id="palette-sel">
+      <option value="0">C0 green</option>
+      <option value="1">C1 cyan</option>
+      <option value="2" selected>C2 hi-green</option>
+      <option value="3">C3 hi-cyan</option>
+    </select>
+    <button id="mute-btn">🔈 Mute</button>
+    <button id="fullscreen-btn">⛶ Full</button>
+    <span style="color:#555">|</span>
+    <button id="cheat-lives">+Life</button>
+    <button id="cheat-speed-down">👾-</button>
+    <button id="cheat-speed-up" disabled>👾+</button>
+    <button id="cheat-skip">Skip</button>
+    <span style="color:#555">|</span>
+    <button id="help-btn">?</button>
+  </div>
+
+  <!-- load order matters -->
+  <script src="src/data.js"></script>
+  <script src="src/input.js"></script>
+  <script src="src/sound.js"></script>
+  <script src="src/renderer.js"></script>
+  <script src="src/game.js"></script>
+
+  <script>
+    const canvas = document.getElementById('game-canvas');
+
+    // ── Scaling ────────────────────────────────────────────────────────────
+    // On touch devices: fill available width (non-integer scale is fine).
+    // On desktop: integer scale only, for crisp pixels.
+    function resize() {
+      const touch = window.matchMedia('(pointer: coarse)').matches;
+      const availW = window.innerWidth;
+      const availH = window.innerHeight;
+      let scale;
+      if (touch) {
+        // Reserve space for UI bar
+        const reserved = document.getElementById('ui').offsetHeight + 32;
+        scale = Math.min(availW / 320, (availH - reserved) / 200);
+        scale = Math.max(1, scale);
+      } else {
+        scale = Math.max(1, Math.min(Math.floor(availW / 320), Math.floor(availH / 200)));
+      }
+      canvas.style.width  = (320 * scale) + 'px';
+      canvas.style.height = (200 * scale) + 'px';
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ── Fullscreen ─────────────────────────────────────────────────────────
+    const fsBtn = document.getElementById('fullscreen-btn');
+    function updateFsBtn() {
+      fsBtn.textContent = document.fullscreenElement ? '✕ Full' : '⛶ Full';
+    }
+    fsBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+    document.addEventListener('fullscreenchange', () => { updateFsBtn(); resize(); });
+
+    // ── Palette selector ───────────────────────────────────────────────────
+    document.getElementById('palette-sel').addEventListener('change', e => {
+      if (window.renderer) renderer.setPalette(+e.target.value);
+    });
+
+    // ── Mute toggle (persisted in localStorage) ────────────────────────────
+    let muted = localStorage.getItem('packman_muted') === '1';
+    function applyMute() {
+      if (window.sound) sound.setMuted(muted);
+      if (window._game) window._game.soundOn = !muted;
+      document.getElementById('mute-btn').textContent = muted ? '🔇 Unmute' : '🔈 Mute';
+    }
+    applyMute();
+    document.getElementById('mute-btn').addEventListener('click', () => {
+      muted = !muted;
+      localStorage.setItem('packman_muted', muted ? '1' : '0');
+      applyMute();
+    });
+
+    // ── Help overlay ───────────────────────────────────────────────────────
+    document.getElementById('help-btn').addEventListener('click', () => {
+      alert(
+        'PACKMAN — Kiev\'90 Free Masters\n\n' +
+        'Arrow Keys / WASD  : Move Pacman\n' +
+        'Space / Enter      : Start game\n' +
+        '0\u20139               : Speed (0=fastest, 9=slowest)\n' +
+        'F1 / F2            : Sound OFF / ON\n' +
+        'ESC                : Exit to menu\n' +
+        'S (menu)           : Save game\n' +
+        'L (menu)           : Load game\n\n' +
+        'Touch: tap = start, swipe = move\n' +
+        'D-pad center button = start/confirm\n\n' +
+        'Collect all dots to clear the level.\n' +
+        'Enemies kill on contact — no power-ups!\n' +
+        'Extra lives at 600, 1200, 2000, 2600 pts.\n' +
+        '15 levels, 5 starting lives, score +2 per dot.'
+      );
+    });
+
+    // ── Cheat buttons ──────────────────────────────────────────────────────
+    document.getElementById('cheat-lives').addEventListener('click', () => {
+      if (window._game) window._game.lives++;
+    });
+    function updateSlowBtns() {
+      const bonus = window._game ? (window._game._enemySlowBonus || 0) : 0;
+      document.getElementById('cheat-speed-up').disabled = bonus <= 0;
+    }
+    function applySlowBonus(delta) {
+      if (!window._game) return;
+      const g = window._game;
+      g._enemySlowBonus = Math.max(0, (g._enemySlowBonus || 0) + delta);
+      for (const e of g.enemies) {
+        e.xTarget = Math.max(1, e.xTarget + delta);
+        e.yTarget = Math.max(1, e.yTarget + delta);
+      }
+      updateSlowBtns();
+    }
+    document.getElementById('cheat-speed-down').addEventListener('click', () => applySlowBonus(1));
+    document.getElementById('cheat-speed-up').addEventListener('click', () => applySlowBonus(-1));
+    document.getElementById('cheat-skip').addEventListener('click', () => {
+      if (!window._game) return;
+      const g = window._game;
+      if (g.state === 'PLAYING' || g.state === 'MENU' || g.state === 'LEVEL_COMPLETE') {
+        g.levelIdx = (g.levelIdx + 1) % N_LEVELS;
+        g._initLevel();
+        g._setState('PLAYING');
+      }
+    });
+
+    // ── Boot ───────────────────────────────────────────────────────────────
+    window.addEventListener('load', () => {
+      if (typeof Game === 'undefined') { console.error('Game class not loaded'); return; }
+      const game = new Game(canvas);
+      window._game = game;
+      applyMute();
+      resize();
+      game.start();
+    });
+  </script>
+</body>
+</html>

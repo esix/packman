@@ -40,13 +40,13 @@ const input = (() => {
       held.add(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
       setTimeout(() => {
         held.delete('ArrowRight'); held.delete('ArrowLeft');
-      }, 150);
+      }, 350);
     } else {
       justDown.add(dy > 0 ? 'ArrowDown' : 'ArrowUp');
       held.add(dy > 0 ? 'ArrowDown' : 'ArrowUp');
       setTimeout(() => {
         held.delete('ArrowDown'); held.delete('ArrowUp');
-      }, 150);
+      }, 350);
     }
   }, { passive: true });
 

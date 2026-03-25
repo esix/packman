@@ -4,11 +4,13 @@
 const input = (() => {
   const held = new Set();        // keys currently held down
   const justDown = new Set();    // keys pressed this frame (cleared by consumer)
+  let _lastDirFromTouch = false; // true if last direction input was touch/swipe
 
   // ── Keyboard ──────────────────────────────────────────────────────────────
   document.addEventListener('keydown', e => {
     if (!held.has(e.code)) justDown.add(e.code);
     held.add(e.code);
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) _lastDirFromTouch = false;
     if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) {
       e.preventDefault();
     }
@@ -38,12 +40,14 @@ const input = (() => {
     } else if (adx > ady) {
       justDown.add(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
       held.add(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
+      _lastDirFromTouch = true;
       setTimeout(() => {
         held.delete('ArrowRight'); held.delete('ArrowLeft');
       }, 350);
     } else {
       justDown.add(dy > 0 ? 'ArrowDown' : 'ArrowUp');
       held.add(dy > 0 ? 'ArrowDown' : 'ArrowUp');
+      _lastDirFromTouch = true;
       setTimeout(() => {
         held.delete('ArrowDown'); held.delete('ArrowUp');
       }, 350);
@@ -54,7 +58,8 @@ const input = (() => {
   function dpad(code) {
     justDown.add(code);
     held.add(code);
-    setTimeout(() => held.delete(code), 200);
+    _lastDirFromTouch = true;
+    setTimeout(() => held.delete(code), 350);
   }
 
   return {
@@ -87,6 +92,7 @@ const input = (() => {
     dpadRight() { dpad('ArrowRight'); },
     dpadFire()  { justDown.add('Space'); },
 
+    isTouchDir() { return _lastDirFromTouch; },
     clearAll() { justDown.clear(); },
   };
 })();

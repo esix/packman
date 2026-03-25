@@ -76,19 +76,35 @@ for (let lvl = 0; lvl < N_LEVELS; lvl++) {
     console.log();
 }
 
-// ── Identify level 13 (index 12) issues ─────────────────────────────────────
+// ── Fix level 13 (index 12) ──────────────────────────────────────────────────
+// Original bug: [row=3,col=0] and [row=8,col=0] are 0x00 (empty) instead of wall,
+// creating visual gaps. Fix: replace with 0x0A (vertical wall).
+// Gameplay fix: [row=4,col=1] and [row=7,col=1] are corner walls that trap Pacman
+// in a 2-tile dead zone. Replace with 0x00 (empty) to open passages between bands,
+// mirroring the right border pattern.
 const lvl13 = levels[12];
-const emptyTiles = [];
-for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++)
-        if (lvl13[r][c] === 0x00)
-            emptyTiles.push([r, c]);
-if (emptyTiles.length) {
-    console.log(`Level 13 has ${emptyTiles.length} empty (0x00) tiles: ${JSON.stringify(emptyTiles)}`);
-    console.log('→ Fixing by replacing with 0x0A (vertical corridor)');
-    for (const [r, c] of emptyTiles)
-        lvl13[r][c] = 0x0A;
-}
+// Visual fix: replace wall gaps with proper corners
+lvl13[3][0] = 0x02;  // ╭ corner right+down
+lvl13[3][1] = 0x08;  // ╯ corner left+up
+lvl13[8][0] = 0x09;  // ╰ corner right+up
+lvl13[8][1] = 0x07;  // ╮ corner left+down
+// Gameplay fix: open passages so Pacman can escape
+lvl13[4][0] = 0x0A;  // │ vertical wall (was ╭)
+lvl13[4][1] = 0x01;  // dot
+lvl13[7][0] = 0x0A;  // │ vertical wall (was ╰)
+lvl13[7][1] = 0x01;  // dot
+// Symmetry fix: row 5-6 col 2-4 is a 3x2 rectangle (╭═╮/╰═╯), all others are 2x2.
+// Shift col 2 corner one cell right to make it 2x2 (╭╮/╰╯) like the rest.
+lvl13[5][2] = 0x01;  // dot (was ╭)
+lvl13[5][3] = 0x02;  // ╭ (was ═)
+lvl13[6][2] = 0x01;  // dot (was ╰)
+lvl13[6][3] = 0x09;  // ╰ (was ═)
+// Copy corner pattern from (row2-3, col0-1) to (row5-6, col0-1)
+lvl13[5][0] = 0x09;  // ╰
+lvl13[5][1] = 0x07;  // ╮
+lvl13[6][0] = 0x02;  // ╭
+lvl13[6][1] = 0x08;  // ╯
+console.log('Level 13 fix applied: corners + passages + symmetry fix');
 
 // ── CGA palettes (4 palette choices from game menu) ─────────────────────────
 // 2bpp: color 0=bg, 1, 2, 3
@@ -154,7 +170,7 @@ ${levelsJs}
 const CGA_PALETTES = ${JSON.stringify(CGA_PALETTES, null, 2)};
 
 // Default palette (CGA palette 1 high intensity: black/cyan/magenta/white)
-const DEFAULT_PALETTE = 3;
+const DEFAULT_PALETTE = 2;
 
 // Tile character map for debugging
 const TILE_CHARS = ${JSON.stringify(TILE_CHARS)};
@@ -168,11 +184,39 @@ const GHOST_COLORS = [
 ];
 const FRIGHT_GHOST_COLOR = { body: '#0000aa', eye: '#ff55ff', pupil: '#ffffff' };
 
+// Pacman sprite frame IDs per direction (from ASM DS:0x96E0..0x96F8)
+// Each direction has 2 animation frames
+const PAC_SPRITES = {
+  1: [0x11, 0x12],  // up
+  2: [0x0D, 0x0E],  // right
+  3: [0x13, 0x14],  // down
+  4: [0x0F, 0x10],  // left
+};
+
+// Enemy sprite frame IDs (from ASM DS:0x9700)
+const ENEMY_SPRITES = [0x15, 0x16];
+
+// Enemy movement direction patterns (from ASM DS:0x9680, 0x96A0, 0x96C0)
+// 16 entries each: 1=up, 2=right, 3=down, 4=left
+const ENEMY_PATTERNS = [
+  [1, 2, 3, 1, 4, 2, 3, 4, 2, 1, 4, 3, 2, 3, 1, 2],
+  [4, 3, 4, 1, 3, 2, 4, 1, 3, 2, 4, 1, 2, 3, 1, 4],
+  [2, 3, 1, 2, 4, 3, 1, 2, 3, 4, 2, 4, 1, 3, 2, 4],
+];
+
+// Score milestones for extra lives (from ASM: cmp [0xA118], values)
+const EXTRA_LIFE_SCORES = [600, 1200, 2000, 2600];
+
+// Color cycle for level-complete animation (from ASM DS:0x974C)
+const LEVEL_COMPLETE_COLORS = [1, 2, 3, 2, 1, 3, 2, 3];
+
 // Export
 if (typeof module !== 'undefined') module.exports = {
     N_LEVELS, COLS, ROWS, TILE_W, TILE_H,
     SPRITES_RAW, T_EMPTY, T_DOT, T_POWER, WALKABLE, LEVELS,
     CGA_PALETTES, DEFAULT_PALETTE, TILE_CHARS, GHOST_COLORS, FRIGHT_GHOST_COLOR,
+    PAC_SPRITES, ENEMY_SPRITES, ENEMY_PATTERNS, EXTRA_LIFE_SCORES,
+    LEVEL_COMPLETE_COLORS,
 };
 `;
 

@@ -48,12 +48,11 @@ const SPRITES_RAW = [
 
 // Tile IDs
 const T_EMPTY   = 0x00;  // open gap (fixed level 13 edges)
-const T_DOT     = 0x01;  // small dot (+2 pts)
-const T_POWER   = 0x15;  // power pellet (+2 pts, same as dot in original)
-const T_POWER2  = 0x16;  // power pellet variant (+2 pts)
+const T_DOT     = 0x01;  // small dot (10 pts)
+const T_POWER   = 0x15;  // power pellet / ghost house ghost (50 pts, fright mode)
 
 // Tiles that Pacman can walk through
-const WALKABLE = new Set([T_EMPTY, T_DOT, T_POWER, T_POWER2]);
+const WALKABLE = new Set([T_EMPTY, T_DOT, T_POWER]);
 
 // Level grids: levels[lvl][row][col] = tile id (0-indexed levels)
 const LEVELS = [
@@ -242,12 +241,12 @@ const LEVELS = [
     [2,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,7],
     [10,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,10],
     [9,7,1,2,7,1,2,7,1,2,7,1,2,7,1,2,7,1,2,8],
-    [10,10,1,9,8,1,9,8,1,9,8,1,9,8,1,9,8,1,9,7],
-    [2,8,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,10],
-    [10,1,2,11,7,1,2,7,1,2,7,1,2,7,1,2,7,1,2,8],
-    [10,1,9,11,8,1,9,8,1,9,8,1,9,8,1,9,8,1,9,7],
-    [9,7,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,10],
-    [10,10,1,2,7,1,2,7,1,2,7,1,2,7,1,2,7,1,2,8],
+    [2,8,1,9,8,1,9,8,1,9,8,1,9,8,1,9,8,1,9,7],
+    [10,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,10],
+    [9,7,1,2,7,1,2,7,1,2,7,1,2,7,1,2,7,1,2,8],
+    [2,8,1,9,8,1,9,8,1,9,8,1,9,8,1,9,8,1,9,7],
+    [10,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,10],
+    [9,7,1,2,7,1,2,7,1,2,7,1,2,7,1,2,7,1,2,8],
     [2,8,1,9,8,1,9,8,1,9,8,1,9,8,1,9,8,1,9,7],
     [10,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,10],
     [9,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,8]
@@ -383,6 +382,15 @@ const DEFAULT_PALETTE = 2;
 // Tile character map for debugging
 const TILE_CHARS = {"0":" ","1":".","2":"J","3":"T","4":"F","5":"-","6":"-","7":"r","8":"L","9":"j","10":"|","11":"=","12":"+","13":"P","14":"p","15":"Q","16":"q","17":"U","18":"u","19":"G","20":"g","21":"*","22":"&","23":"X","24":"A","25":"V","26":"a","27":"v","28":"x"};
 
+// Ghost appearance variants (3 color schemes, chosen randomly at level start)
+const GHOST_COLORS = [
+    { body: '#ff55ff', eye: '#0000aa', pupil: '#ffffff' },  // magenta
+    { body: '#ff5555', eye: '#0000aa', pupil: '#ffffff' },  // red
+    { body: '#55ffff', eye: '#0000aa', pupil: '#ffffff' },  // cyan
+    { body: '#ffff55', eye: '#0000aa', pupil: '#ffffff' },  // yellow
+];
+const FRIGHT_GHOST_COLOR = { body: '#0000aa', eye: '#ff55ff', pupil: '#ffffff' };
+
 // Pacman sprite frame IDs per direction (from ASM DS:0x96E0..0x96F8)
 // Each direction has 2 animation frames
 const PAC_SPRITES = {
@@ -412,8 +420,8 @@ const LEVEL_COMPLETE_COLORS = [1, 2, 3, 2, 1, 3, 2, 3];
 // Export
 if (typeof module !== 'undefined') module.exports = {
     N_LEVELS, COLS, ROWS, TILE_W, TILE_H,
-    SPRITES_RAW, T_EMPTY, T_DOT, T_POWER, T_POWER2, WALKABLE, LEVELS,
-    CGA_PALETTES, DEFAULT_PALETTE, TILE_CHARS,
+    SPRITES_RAW, T_EMPTY, T_DOT, T_POWER, WALKABLE, LEVELS,
+    CGA_PALETTES, DEFAULT_PALETTE, TILE_CHARS, GHOST_COLORS, FRIGHT_GHOST_COLOR,
     PAC_SPRITES, ENEMY_SPRITES, ENEMY_PATTERNS, EXTRA_LIFE_SCORES,
     LEVEL_COMPLETE_COLORS,
 };
